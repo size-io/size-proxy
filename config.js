@@ -2,12 +2,13 @@ var fs = require('fs'),
 	util = require('util');
 
 // This is the Demo account; change the access token
-exports.access_token = '00000000-0000-0000-0000-000000000000';
+exports.publisher_access_token = process.env.SIZE_PUBLISHER_TOKEN || '00000000-0000-0000-0000-000000000000';
+exports.subscriber_access_token = process.env.SIZE_SUBSCRIBER_TOKEN || '00000000-0000-0000-0000-000000000000';
 
 // Set to true in order to use local server time
 // It is recommended to keep this false and let the
 // platform manage keeping time in sync
-exports.use_local_time = true;
+exports.use_local_time = false;
 
 // Setting the IP to null will enable listening on any interface
 exports.tcp = {

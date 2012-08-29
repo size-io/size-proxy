@@ -10,7 +10,7 @@ var dgram = require('dgram'),
 var client,
 	sizeConnection,
 	connecting = false,
-	accessToken = config.access_token,
+	publisherAccessToken = config.publisher_access_token,
 	udpServer,
 	tcpServer,
 	redisServer,
@@ -56,7 +56,7 @@ function startSizeClient() {
 		}
 		processQueue();
 	});
-	client.connect(config.size.publisher.url+'?access_token='+accessToken);
+	client.connect(config.size.publisher.url+'?access_token='+publisherAccessToken);
 	return client
 }
 
