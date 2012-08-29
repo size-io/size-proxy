@@ -2,7 +2,7 @@ var fs = require('fs'),
 	util = require('util');
 
 // This is the Demo account; change the access token
-exports.access_token = '06a4a902-36b5-5682-8525-a86bd40cb7e8'
+exports.access_token = '00000000-0000-0000-0000-000000000000';
 
 // Set to true in order to use local server time
 // It is recommended to keep this false and let the
