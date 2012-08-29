@@ -24,7 +24,7 @@ The `size.js` is a Node.js executable.  Install Node.js on your system then simp
 
 The `config.js` file contains configuration values worth reviewing.  Outside of setting a new access token, the default settings will work out of the box.
 
- * **exports.access_token** should be set to an Access Token with enough permissions to publish events to the WebSocket interface.
+ * **exports.publisher_access_token** should be set to an Access Token with enough permissions to publish events to the WebSocket interface.
  * **exports.use_local_time** should be set to `false` unless you have a strong desire to assert the time of published events.
  * **exports.tcp.listen_ip** can be set to any desired IP address; leave it as `null` to listen on any address.
  * **exports.tcp.listen_port** can be set to any desired port. It defaults to `6120`
