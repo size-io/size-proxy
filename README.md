@@ -1,7 +1,7 @@
 Size.IO Proxy
 ==========
 
-The Size.IO Proxy server is a high performance, lightweight and scalable method for collecting data locally to be proxied to the Size.IO platform in a fast and network-efficient manner.  It exposes several different interfaces supporting:
+The Size.IO Proxy server is a high performance, lightweight and scalable method for collecting data locally to be proxied to the Size.IO platform in a fast and network-efficient manner with offline message queueing.  It exposes several different interfaces supporting:
 
  * Redis clients in general
  * Plain TCP that is very Shell and one-liner friendly
@@ -14,7 +14,7 @@ Official documentation and code samples are available at **http://size.io/develo
 The `size.js` is a Node.js executable.  Install Node.js on your system then simply execute the script:
 
 ```bash
-> ./size.js 
+> ./size.js
 29 Aug 00:53:32 - SERVER UDP Proxy bound to udp://*:6125
 29 Aug 00:53:32 - SERVER TCP Proxy bound to tcp://*:6120
 29 Aug 00:53:32 - SERVER Redis Proxy bound to tcp://*:6379
@@ -38,3 +38,18 @@ The `config.js` file contains configuration values worth reviewing.  Outside of 
   * `2` marked as `WARN` in the output
   * `3` marked as `ERROR` in the output
   * Higher values will be marked `SERVER` in the log output
+
+## Client examples
+
+The different client interfaces exist to support software preferences and have no difference in their ability to publish events to the Size.IO API.
+
+### PHP Redis
+
+```php
+$redis = new Redis();
+$redis->connect('127.0.0.1', 6379);
+while (true) {
+    $redis->incrby($key, 1);
+    usleep(mt_rand(100000,1000000));
+}
+```
