@@ -49,7 +49,24 @@ The different client interfaces exist to support software preferences and have n
 $redis = new Redis();
 $redis->connect('127.0.0.1', 6379);
 while (true) {
-    $redis->incrby($key, 1);
+    $redis->incrby('api.get', 1);
     usleep(mt_rand(100000,1000000));
 }
+```
+
+### BASH TCP
+```bash
+for i in {1..10}; do
+    DATE=$(($(date +%s%N)/1000000))
+    printf "%s|api.get|1" $DATE | nc 127.0.0.1 6120
+    sleep 0.1
+done
+```
+
+### BASH UDP
+```bash
+for i in {1..10}; do
+    DATE=$(($(date +%s%N)/1000000))
+    printf "%s|api.get|1" $DATE | nc -u -w1 127.0.0.1 6125
+done
 ```
