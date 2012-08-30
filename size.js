@@ -1,5 +1,21 @@
 #!/usr/bin/env node
 
+/*
+   This file is provided to you under the Apache License,
+   Version 2.0 (the "License"); you may not use this file
+   except in compliance with the License.  You may obtain
+   a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing,
+   software distributed under the License is distributed on an
+   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+   KIND, either express or implied.  See the License for the
+   specific language governing permissions and limitations
+   under the License.
+*/
+
 var dgram = require('dgram'),
 	util = require('util'),
 	net = require('net'),
@@ -80,10 +96,14 @@ function startTCPServer() {
 }
 
 function startRedisServer() {
+	var result;
 	redisServer = net.createServer(function(socket) {
 		socket.on('data', function(data) {
-			relayMessage(parseRedisMessage(data));
-			socket.write('+OK\r\n');
+			result = parseRedisMessage(data);
+			if (result.length === 2) {
+				relayMessage(result[0]);
+				socket.write(':'+ result[1] +'\r\n');
+			}
 		});
 	});
 	redisServer.listen(config.redis.listen_port, config.redis.listen_ip);
@@ -139,15 +159,15 @@ function parseRedisMessage(data) {
 	debug(0, 'Got data parts: \''+ dataParts +'\'');
 
 	// Only the commands we care about
-	var newData = '';
+	var newData = [];
 	switch (dataParts[2]) {
 		case 'INCR':
 			debug(0, 'Redis INCR "'+ dataParts[4] +'"');
-			newData = formatMessage(dataParts[4], '1');
+			newData = [formatMessage(dataParts[4], '1'), 1];
 			break;
 		case 'INCRBY':
 			debug(0, 'Redis INCRBY "'+ dataParts[4] +'" by '+ dataParts[6]);
-			newData = formatMessage(dataParts[4], dataParts[6]);
+			newData = [formatMessage(dataParts[4], dataParts[6]), dataParts[6]];
 			break;
 		case 'QUIT':
 			debug(0, 'client quitting');
