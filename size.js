@@ -23,10 +23,14 @@ var dgram = require('dgram'),
 	wsClient = require('websocket').client,
 	config = require('./config');
 
-var client,
-	sizeConnection,
-	connecting = false,
+var publisher,
+	publisherConnection,
+	publisherConnecting = false,
 	publisherAccessToken = config.publisher_access_token,
+	subscriber,
+	subscriberConnection,
+	subscriberConnecting = false,
+	subscriberAccessToken = config.subscriber_access_token,
 	udpServer,
 	tcpServer,
 	redisServer,
@@ -38,24 +42,24 @@ function debug(level, data) {
 	}
 };
 
-function startSizeClient() {
-	client = new wsClient(),
-	client.on('connectFailed', function(error) {
+function startPublisherClient() {
+	publisher = new wsClient(),
+	publisher.on('connectFailed', function(error) {
 		console.log('Connect Error: ' + error.toString());
 	});
-	client.on('connect', function(connection) {
+	publisher.on('connect', function(connection) {
 		debug(10, 'Size.IO WebSocket Publisher API is connected');
-		sizeConnection = connection,
-		connecting = false;
+		publisherConnection = connection,
+		publisherConnecting = false;
 		connection.on('error', function(error) {
-			debug(3, 'Received platform error: ' + error.toString());
+			debug(3, 'Size.IO publisher error: ' + error.toString());
 		});
 		connection.on('close', function() {
-			debug(1, 'Size.IO platform connection closed');
+			debug(1, 'Size.IO publisher connection closed');
 		});
 		connection.on('message', function(message) {
 			if (message.type === 'utf8') {
-				debug(1, 'Received platform message: "' + message.utf8Data + '"');
+				debug(1, 'Size.IO publisher message: "' + message.utf8Data + '"');
 			}
 		});
 		function processQueue() {
@@ -72,9 +76,48 @@ function startSizeClient() {
 		}
 		processQueue();
 	});
-	client.connect(config.size.publisher.url+'?access_token='+publisherAccessToken);
-	return client
+	publisher.connect(config.size.publisher.url+'?access_token='+publisherAccessToken);
+	return publisher
 }
+
+function startSubscriberClient() {
+	subscriber = new wsClient(),
+	subscriber.on('connectFailed', function(error) {
+		console.log('Connect Error: ' + error.toString());
+	});
+	subscriber.on('connect', function(connection) {
+		debug(10, 'Size.IO WebSocket Publisher API is connected');
+		subscriberConnection = connection,
+		subscriberConnecting = false;
+		connection.on('error', function(error) {
+			debug(3, 'Size.IO subscriber error: ' + error.toString());
+		});
+		connection.on('close', function() {
+			debug(1, 'Size.IO subscriber connection closed');
+		});
+		connection.on('message', function(message) {
+			if (message.type === 'utf8') {
+				debug(1, 'Size.IO subscriber message: "' + message.utf8Data + '"');
+			}
+		});
+		function processQueue() {
+			if (connection.connected) {
+				if (messageQueue.length == 0) {
+					setTimeout(processQueue, 100);
+				} else {
+					var message = messageQueue.splice(0,1);
+					debug(1, 'Processing queued message: "'+ message[0] +'"');
+					connection.sendUTF(message[0]);
+					processQueue();
+				}
+			}
+		}
+		processQueue();
+	});
+	subscriber.connect(config.size.subscriber.url+'?access_token='+subscriberAccessToken);
+	return subscriber
+}
+
 
 function startUDPServer() {
 	udpServer = dgram.createSocket('udp4', function(msg, rinfo) {
@@ -117,6 +160,8 @@ function startServers() {
 		startTCPServer();
 	if (! redisServer)
 		startRedisServer();
+	if (! subscriber)
+		subscriber = startSubscriberClient();
 }
 
 function formatMessage(Key, Val) {
@@ -133,13 +178,13 @@ function relayMessage(msg) {
 	if (! msg || msg == "")
 		return null;
 	try {
-		if (sizeConnection && sizeConnection.connected) {
-			sizeConnection.sendUTF(msg);
+		if (publisherConnection && publisherConnection.connected) {
+			publisherConnection.sendUTF(msg);
 			debug(0, 'Published \''+ msg +'\' to api.size.io');
 		} else {
-			if (! connecting) {
-				connecting = true;
-				client = startSizeClient();
+			if (! publisherConnecting) {
+				publisherConnecting = true;
+				publisher = startPublisherClient();
 			}
 			messageQueue.push(msg);
 			debug(0, 'Queued \''+ msg +'\' to api.size.io');
@@ -160,24 +205,23 @@ function parseRedisMessage(data) {
 
 	// Only the commands we care about
 	var newData = [];
-	switch (dataParts[2]) {
-		case 'INCR':
-			debug(0, 'Redis INCR "'+ dataParts[4] +'"');
-			newData = [formatMessage(dataParts[4], '1'), 1];
-			break;
-		case 'INCRBY':
-			debug(0, 'Redis INCRBY "'+ dataParts[4] +'" by '+ dataParts[6]);
-			newData = [formatMessage(dataParts[4], dataParts[6]), dataParts[6]];
-			break;
-		case 'QUIT':
-			debug(0, 'client quitting');
-			break;
-		case 'PING':
-			debug(0, 'ping');
-			break;
-		default:
-			debug(3, 'Unsupported command: '+ dataParts);
-			return false;
+	if (dataParts[2] === 'INCR') {
+		debug(0, 'Redis INCR "'+ dataParts[4] +'"');
+		newData = [formatMessage(dataParts[4], '1'), 1];
+	} else if (dataParts[2] === 'INCRBY') {
+		debug(0, 'Redis INCRBY "'+ dataParts[4] +'" by '+ dataParts[6]);
+		newData = [formatMessage(dataParts[4], dataParts[6]), dataParts[6]];
+	} else if (dataParts[0].indexOf('SUBSCRIBE') === 0) {
+		debug(0, 'Redis '+ dataParts[0]);
+		var channels = dataParts[0].replace(/\s+/, " ").substr(10).split(' ');
+		debug(0, 'Redis channels: "'+ channels +'"');
+	} else if (dataParts[2] === 'QUIT') {
+		debug(0, 'client quitting');
+	} else if (dataParts[2] === 'PING') {
+		debug(0, 'ping');
+	} else {
+		debug(3, 'Unsupported command: '+ dataParts);
+		return false;
 	}
 	return newData;
 }
