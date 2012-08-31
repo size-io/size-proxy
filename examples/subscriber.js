@@ -16,8 +16,7 @@ function newClient() {
 		});
 		connection.on('message', function(message) {
 			if (message.type === 'utf8') {
-				if (message.utf8Data.indexOf("event") === 0)
-					console.log('Received: "' + message.utf8Data + '"');
+				console.log('Received: "' + message.utf8Data + '"');
 			}
 		});
 	});

@@ -97,7 +97,7 @@ function startSubscriberClient() {
 		});
 		connection.on('message', function(message) {
 			if (message.type === 'utf8') {
-				debug(1, 'Size.IO subscriber message: "' + message.utf8Data + '"');
+				debug(0, 'Size.IO subscriber message: "' + message.utf8Data + '"');
 			}
 		});
 		function processQueue() {
@@ -164,12 +164,12 @@ function startServers() {
 		subscriber = startSubscriberClient();
 }
 
-function formatMessage(Key, Val) {
+function formatMessage(key, val) {
 	var message;
 	if (config.use_local_time)
-		message = new Date().getTime() +'|'+ Key +'|'+ Val;
+		message = JSON.stringify({"k":key, "v":val, "t":new Date().getTime()});
 	else
-		message = Key +'|'+ Val;
+		message = JSON.stringify({"k":key, "v":val});
 	debug(0, 'Formatted message: "'+ message +'"');
 	return message;
 }
