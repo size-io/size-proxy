@@ -45,7 +45,7 @@ function debug(level, data) {
 function startPublisherClient() {
 	publisher = new wsClient(),
 	publisher.on('connectFailed', function(error) {
-		console.log('Connect Error: ' + error.toString());
+		console.log('Size.IO Publisher connect Error: ' + error.toString());
 	});
 	publisher.on('connect', function(connection) {
 		debug(10, 'Size.IO WebSocket Publisher API is connected');
@@ -83,7 +83,7 @@ function startPublisherClient() {
 function startSubscriberClient() {
 	subscriber = new wsClient(),
 	subscriber.on('connectFailed', function(error) {
-		console.log('Connect Error: ' + error.toString());
+		console.log('Size.IO Subscriber connect Error: ' + error.toString());
 	});
 	subscriber.on('connect', function(connection) {
 		debug(10, 'Size.IO WebSocket Publisher API is connected');

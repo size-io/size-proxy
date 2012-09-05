@@ -12,15 +12,21 @@ function newClient() {
 			console.log('error: '+ error.toString());
 		});
 		connection.on('close', function() {
+			console.log('closed');
 			client = newClient();
 		});
-		connection.on('message', function(message) {
-			if (message.type === 'utf8') {
-				console.log('Received: "' + message.utf8Data + '"');
+		connection.on('message', function(data) {
+			if (data.type === 'utf8') {
+				console.log('Received: '+ data.utf8Data);
+				message = JSON.parse(data.utf8Data);
+				if (message['error']) {
+					console.log('Error event. Closing');
+					process.exit(1);
+				}
 			}
 		});
 	});
-	client.connect('wss://api.size.io/v1.0/event/subscribe?access_token='+ accessToken);
+	client.connect('ws://localhost:8080/v1.0/event/subscribe/api*,foo*?access_token='+ accessToken);
 	return client;
 }
 

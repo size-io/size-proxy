@@ -1,7 +1,7 @@
 Size.IO Proxy
 ==========
 
-The Size.IO Proxy server is a high performance, lightweight and scalable method for collecting data locally to be proxied to the Size.IO platform in a fast and network-efficient manner with offline message queueing.  Send your messages to this proxy and let it worry about relaying them to the platform. It exposes several different interfaces supporting:
+The Size.IO Proxy server is a high performance, lightweight and scalable method for collecting data locally to be relayed to the Size.IO platform in a fast and network-efficient manner with offline message queueing.  Send your messages to this proxy and let it worry about delivering them to the platform. It exposes several different interfaces supporting:
 
  * Redis clients in general
  * Plain TCP that is very Shell and one-liner friendly
@@ -25,6 +25,7 @@ The `size.js` is an executable Node.js script.  Install Node.js (http://nodejs.o
 The `config.js` file contains configuration values worth reviewing.  Outside of setting a new access token, the default settings will work out of the box.
 
  * **exports.publisher_access_token** should be set to an Access Token with enough permissions to publish events to the Size.IO WebSocket interface.
+ * **exports.subscriber_access_token** should be set to an Access Token with enough permissions to publish events to the Size.IO WebSocket interface.
  * **exports.use_local_time** should be set to `false` unless you have a strong desire to assert the time of published events.
  * **exports.tcp.listen_ip** can be set to any desired IP address; leave it as `null` to listen on any address.
  * **exports.tcp.listen_port** can be set to any desired port. It defaults to `6120`
@@ -43,18 +44,18 @@ The `config.js` file contains configuration values worth reviewing.  Outside of 
 
 The different client interfaces exist to support software preferences and have no difference in their ability to publish events to the Size.IO API.
 
-### PHP Redis
+### PHP Redis Publish
 
 ```php
 $redis = new Redis();
 $redis->connect('127.0.0.1', 6379);
 while (true) {
     $redis->incrby('api.get', 1);
-    usleep(mt_rand(100000,1000000));
+	usleep(100000);
 }
 ```
 
-### BASH TCP
+### BASH TCP Publish
 ```bash
 for i in {1..10}; do
     printf '{"k":"api.get","v":1}' | nc 127.0.0.1 6120
@@ -62,9 +63,10 @@ for i in {1..10}; do
 done
 ```
 
-### BASH UDP
+### BASH UDP Publish
 ```bash
 for i in {1..10}; do
     printf '{"k":"api.get","v":1}' | nc -u -w0 127.0.0.1 6125
+    sleep 0.1
 done
 ```
