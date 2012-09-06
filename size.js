@@ -35,7 +35,16 @@ var publisher,
 	tcpServer,
 	redisServer,
 	redisSocket,
+	redisSubscribers = [],
 	messageQueue = [];
+
+Array.prototype.remove = function (e) {
+	for (var i = 0; i < this.length; i++) {
+		if (e == this[i]) {
+			return this.splice(i, 1);
+		}
+	}
+};
 
 function debug(level, data) {
 	if (level >= config.debug_level) {
@@ -100,10 +109,11 @@ function startSubscriberClient() {
 		connection.on('message', function(message) {
 			if (message.type === 'utf8') {
 				debug(0, 'Size.IO subscriber message: "' + message.utf8Data + '"');
-				if (redisSocket) {
+				if (redisSubscribers.length > 0) {
 					redisMessage = formatRedisMessage(message.utf8Data);
-					debug(0, "Relaying to redis client: "+ redisMessage);
-					redisSocket.write(redisMessage);
+					for (var i = 0; i < redisSubscribers.length; i++) {
+						redisSubscribers[i].write(redisMessage);
+					}
 				}
 			}
 		});
@@ -146,25 +156,35 @@ function startTCPServer() {
 }
 
 function startRedisServer() {
-	var result;
-	redisServer = net.createServer(function(socket) {
-		redisSocket = socket;
-		socket.on('data', function(data) {
+	var result,
+		server;
+	var init = function() {
+		server = net.createServer(newRedisServer);
+		server.listen(config.redis.listen_port, config.redis.listen_ip);
+		debug(10, 'Redis Proxy bound to tcp://'+ (config.redis.listen_ip || '*') +':'+ config.redis.listen_port);
+		return this;
+	};
+	var newRedisServer = function(stream) {
+		stream.on('connect', function() {
+			redisSubscribers.push(stream);
+			debug(1, 'Client connected: #'+ redisSubscribers.length);
+		});
+		stream.on('end', function() {
+			redisSubscribers.remove(stream);
+			stream.end();
+			debug(0, 'Client disconnected');
+		});
+		stream.on('data', function(data) {
 			result = parseRedisMessage(data);
 			if (result.length === 2) {
 				relayMessage(result[0]);
-				socket.write(':'+ result[1] +'\r\n');
+				stream.write(':'+ result[1] +'\r\n');
 			} else if (result.length === 1) {
-				socket.write(result[0]);
+				stream.write(result[0]);
 			}
 		});
-		socket.on('close', function() {
-			debug(0, "Redis client closed");
-			redisSocket = null;
-		});
-	});
-	redisServer.listen(config.redis.listen_port, config.redis.listen_ip);
-	debug(10, 'Redis Proxy bound to tcp://'+ (config.redis.listen_ip || '*') +':'+ config.redis.listen_port);
+	};
+	return init();
 }
 
 function startServers() {
@@ -188,39 +208,15 @@ function formatMessage(key, val) {
 	return message;
 }
 
-function relayMessage(msg) {
-	if (! msg || msg == "")
-		return null;
-	try {
-		if (publisherConnection && publisherConnection.connected) {
-			publisherConnection.sendUTF(msg);
-			debug(0, 'Published \''+ msg +'\' to api.size.io');
-		} else {
-			if (! publisherConnecting) {
-				publisherConnecting = true;
-				publisher = startPublisherClient();
-			}
-			messageQueue.push(msg);
-			debug(0, 'Queued \''+ msg +'\' to api.size.io');
-		}
-	} catch (e) {
-		debug(0, 'Not connected to Size.IO. Queueing Message for publish: "'+ msg +'"');
-		messageQueue.push[msg];
-	}
-}
-
 function formatRedisMessage(data) {
-	//return '*3\r\n$7\r\nmessage\r\n$5\r\nevent\r\n'
-	//		+'$'+ data.length +'\r\n'+ data +'\r\n';
-	//return '*3\r\n$7\r\nmessage\r\n$5\r\nevent\r\n$5\r\nHello\r\n';
-	return '*3\r\n$7\r\nmessage\r\n$5\r\nevent\r\n$13\r\nhello, world!\r\n';
+	return '*3\r\n$7\r\nmessage\r\n$5\r\nevent\r\n'
+			+'$'+ data.length +'\r\n'+ data +'\r\n';
 }
 
 function parseRedisMessage(data) {
 	var string = data.toString();
 	if (string == 'QUIT')
 		return null;
-	//debug(0, 'Parsing redis data: \''+ string +'\'');
 	var dataParts = string.split('\r\n');
 	debug(0, 'Got data parts: \''+ dataParts +'\'');
 
@@ -248,9 +244,29 @@ function parseRedisMessage(data) {
 	return newData;
 }
 
+function relayMessage(msg) {
+	if (! msg || msg == "")
+		return null;
+	try {
+		if (publisherConnection && publisherConnection.connected) {
+			publisherConnection.sendUTF(msg);
+			debug(0, 'Published \''+ msg +'\' to api.size.io');
+		} else {
+			if (! publisherConnecting) {
+				publisherConnecting = true;
+				publisher = startPublisherClient();
+			}
+			messageQueue.push(msg);
+			debug(0, 'Queued \''+ msg +'\' to api.size.io');
+		}
+	} catch (e) {
+		debug(0, 'Not connected to Size.IO. Queueing Message for publish: "'+ msg +'"');
+		messageQueue.push[msg];
+	}
+}
+
 startServers();
 
 process.on('uncaughtException', function(err) {
 	debug(10, 'Uncaught Exception: '+ err);
 });
-
