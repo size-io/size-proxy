@@ -34,6 +34,7 @@ var publisher,
 	udpServer,
 	tcpServer,
 	redisServer,
+	redisSocket,
 	messageQueue = [];
 
 function debug(level, data) {
@@ -89,6 +90,7 @@ function startSubscriberClient() {
 		debug(10, 'Size.IO WebSocket Publisher API is connected');
 		subscriberConnection = connection,
 		subscriberConnecting = false;
+		var redisMessage;
 		connection.on('error', function(error) {
 			debug(3, 'Size.IO subscriber error: ' + error.toString());
 		});
@@ -98,6 +100,11 @@ function startSubscriberClient() {
 		connection.on('message', function(message) {
 			if (message.type === 'utf8') {
 				debug(0, 'Size.IO subscriber message: "' + message.utf8Data + '"');
+				if (redisSocket) {
+					redisMessage = formatRedisMessage(message.utf8Data);
+					debug(0, "Relaying to redis client: "+ redisMessage);
+					redisSocket.write(redisMessage);
+				}
 			}
 		});
 		function processQueue() {
@@ -141,12 +148,19 @@ function startTCPServer() {
 function startRedisServer() {
 	var result;
 	redisServer = net.createServer(function(socket) {
+		redisSocket = socket;
 		socket.on('data', function(data) {
 			result = parseRedisMessage(data);
 			if (result.length === 2) {
 				relayMessage(result[0]);
 				socket.write(':'+ result[1] +'\r\n');
+			} else if (result.length === 1) {
+				socket.write(result[0]);
 			}
+		});
+		socket.on('close', function() {
+			debug(0, "Redis client closed");
+			redisSocket = null;
 		});
 	});
 	redisServer.listen(config.redis.listen_port, config.redis.listen_ip);
@@ -195,6 +209,13 @@ function relayMessage(msg) {
 	}
 }
 
+function formatRedisMessage(data) {
+	//return '*3\r\n$7\r\nmessage\r\n$5\r\nevent\r\n'
+	//		+'$'+ data.length +'\r\n'+ data +'\r\n';
+	//return '*3\r\n$7\r\nmessage\r\n$5\r\nevent\r\n$5\r\nHello\r\n';
+	return '*3\r\n$7\r\nmessage\r\n$5\r\nevent\r\n$13\r\nhello, world!\r\n';
+}
+
 function parseRedisMessage(data) {
 	var string = data.toString();
 	if (string == 'QUIT')
@@ -215,12 +236,13 @@ function parseRedisMessage(data) {
 		debug(0, 'Redis '+ dataParts[0]);
 		var channels = dataParts[0].replace(/\s+/, " ").substr(10).split(' ');
 		debug(0, 'Redis channels: "'+ channels +'"');
+		newData = ["*3\r\n$9\r\nsubscribe\r\n$5\r\nevent\r\n:1\r\n"];
 	} else if (dataParts[2] === 'QUIT') {
-		debug(0, 'client quitting');
+		debug(0, 'Redis client quitting');
 	} else if (dataParts[2] === 'PING') {
-		debug(0, 'ping');
+		debug(0, 'Redis ping');
 	} else {
-		debug(3, 'Unsupported command: '+ dataParts);
+		debug(1, 'Unsupported Redis command: '+ dataParts);
 		return false;
 	}
 	return newData;
