@@ -42,10 +42,9 @@ The `config.js` file contains configuration values worth reviewing.  Outside of 
 
 ## Client examples
 
-The different client interfaces exist to support software preferences and have no difference in their ability to publish events to the Size.IO API.
+For event publishing, the different client interfaces exist to support software preferences and have no strong advantages over each other.  Only the Redis client interface supports subscriptions.
 
 ### PHP Redis Publish
-
 ```php
 $redis = new Redis();
 $redis->connect('127.0.0.1', 6379);
@@ -53,6 +52,16 @@ while (true) {
     $redis->incrby('api.get', 1);
 	usleep(100000);
 }
+```
+
+## PHP Redis Subscribe
+```php
+$redis = new Redis();
+$redis->connect('127.0.0.1', 6379);
+function echoEvent($redis, $channel, $message) {
+	echo "'$channel' message: '$message'\n";
+}
+$redis->subscribe(array('event'), 'echoEvent');
 ```
 
 ### BASH TCP Publish
