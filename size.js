@@ -58,18 +58,18 @@ function startPublisherClient() {
 		console.log('Size.IO Publisher connect Error: ' + error.toString());
 	});
 	publisher.on('connect', function(connection) {
-		debug(10, 'Size.IO WebSocket Publisher API is connected');
+		debug(10, 'Connected to Size.IO Platform');
 		publisherConnection = connection,
 		publisherConnecting = false;
 		connection.on('error', function(error) {
-			debug(3, 'Size.IO publisher error: ' + error.toString());
+			debug(3, 'Size.IO Publisher error: ' + error.toString());
 		});
 		connection.on('close', function() {
-			debug(1, 'Size.IO publisher connection closed');
+			debug(1, 'Closed connection to Size.IO Platform');
 		});
 		connection.on('message', function(message) {
 			if (message.type === 'utf8') {
-				debug(1, 'Size.IO publisher message: "' + message.utf8Data + '"');
+				debug(1, 'Message from Size.IO Platform: "' + message.utf8Data + '"');
 			}
 		});
 		function processQueue() {

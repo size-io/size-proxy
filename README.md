@@ -20,6 +20,8 @@ The `size.js` is an executable Node.js script.  Install Node.js (http://nodejs.o
 29 Aug 00:53:32 - SERVER Redis Proxy bound to tcp://*:6379
 ```
 
+See below for information on how to use an upstart script to keep the service running in the background.
+
 ## Configuring the proxy
 
 The `config.js` file contains configuration values worth reviewing.  Outside of setting a new access token, the default settings will work out of the box.
@@ -79,3 +81,13 @@ for i in {1..10}; do
     sleep 0.1
 done
 ```
+
+## Upstart script
+An upstart script has been provided to automatically start the script on system start and to cleanly stop on system shutdown. Upstart will also restart the script should it crash for any reason.  Installation is easy:
+
+ * Copy the `size-proxy.conf` to `/etc/init/`
+ * Edit the script to set the `HOME` and `USER` variables, adapted for your sytem
+ * Start the proxy with `sudo start size-proxy`
+ * Stop the proxy with `sudo stop size-proxy`
+
+Log files can be found in `/var/log/upstart/`.
