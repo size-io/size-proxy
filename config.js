@@ -1,7 +1,7 @@
 var fs = require('fs'),
 	util = require('util');
 
-// This is the Demo account; change the access token
+// Be sure to change this access token
 exports.publisher_access_token = process.env.SIZE_PUBLISHER_TOKEN || '00000000-0000-0000-0000-000000000000';
 exports.subscriber_access_token = process.env.SIZE_SUBSCRIBER_TOKEN || '00000000-0000-0000-0000-000000000000';
 

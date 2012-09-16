@@ -265,6 +265,11 @@ function relayMessage(msg) {
 	}
 }
 
+if (publisherAccessToken == '00000000-0000-0000-0000-000000000000' || subscriberAccessToken == '00000000-0000-0000-0000-000000000000') {
+	debug(10, "Error: Access tokens not set.  Please update config.js and start the service again.");
+	process.exit(1);
+}
+
 startServers();
 
 process.on('uncaughtException', function(err) {
